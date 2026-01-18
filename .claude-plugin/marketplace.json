@@ -1,0 +1,20 @@
+{
+  "name": "42apps-plugins",
+  "owner": {
+    "name": "42apps",
+    "email": "contact@42apps.io"
+  },
+  "metadata": {
+    "description": "Collection of productivity plugins for Claude Code by 42apps",
+    "version": "1.0.0",
+    "pluginRoot": "../plugins"
+  },
+  "plugins": [
+    {
+      "name": "ralph-research",
+      "source": "./ralph-research",
+      "description": "Deep codebase research and impact analysis before making changes. Iteratively explores code, maps all dependencies, identifies risks and critical points, and creates a comprehensive implementation plan.",
+      "version": "1.0.0"
+    }
+  ]
+}
