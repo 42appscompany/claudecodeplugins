@@ -1,6 +1,16 @@
 {
-  "description": "Ralph Research plugin stop hook for iterative codebase analysis",
+  "description": "Ralph Research plugin hooks for iterative codebase analysis",
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-check.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
