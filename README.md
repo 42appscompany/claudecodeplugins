@@ -7,7 +7,7 @@ Collection of productivity plugins for Claude Code by [42apps](https://42apps.io
 Add this marketplace to Claude Code:
 
 ```bash
-/plugin marketplace add 42appscompany/42apps-plugins
+/plugin marketplace add 42appscompany/claudecodeplugins
 ```
 
 Then browse and install plugins:
