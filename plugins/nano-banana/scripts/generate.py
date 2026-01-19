@@ -25,7 +25,7 @@ DEFAULT_PROVIDER = PROVIDER_GOOGLE
 
 # Model names
 GOOGLE_MODEL = "gemini-3-pro-image-preview"
-OPENROUTER_MODEL = "google/gemini-2.0-flash-exp:free"  # Free tier model with image gen
+OPENROUTER_MODEL = "google/gemini-3-pro-image-preview"  # Paid model with native image generation
 
 VALID_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9"]
 VALID_RESOLUTIONS = ["1K", "2K", "4K"]
@@ -211,6 +211,14 @@ def generate_with_openrouter(
 
     print(f"Generating with OpenRouter API (model: {OPENROUTER_MODEL})...")
 
+    # Map resolution to OpenRouter image_size format
+    resolution_map = {
+        "1K": "1024x1024",
+        "2K": "2048x2048",
+        "4K": "4096x4096",
+    }
+    image_size = resolution_map.get(resolution, "2048x2048")
+
     try:
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,
@@ -223,34 +231,70 @@ def generate_with_openrouter(
             extra_headers={
                 "HTTP-Referer": "https://github.com/42apps/nano-banana",
                 "X-Title": "Nano Banana Pro"
+            },
+            extra_body={
+                "modalities": ["text", "image"],
+                "image_config": {
+                    "aspect_ratio": aspect_ratio,
+                    "image_size": image_size,
+                }
             }
         )
     except Exception as e:
         print(f"Error calling OpenRouter API: {e}")
         sys.exit(1)
 
-    # Extract response
+    # Extract response - OpenRouter returns images in content array
     if response.choices and response.choices[0].message:
         message = response.choices[0].message
 
         # Check for image in response
         if hasattr(message, "content") and message.content:
-            # OpenRouter may return image as base64 in content
             content = message.content
 
-            # Try to extract base64 image if present
-            if isinstance(content, str):
+            # Handle list of content blocks (multimodal response)
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        # Check for image_url type
+                        if block.get("type") == "image_url":
+                            image_url = block.get("image_url", {})
+                            url = image_url.get("url", "")
+                            if url.startswith("data:image"):
+                                base64_start = url.find("base64,") + 7
+                                if base64_start > 7:
+                                    return base64.b64decode(url[base64_start:])
+                        # Check for inline_data (Gemini format)
+                        elif block.get("type") == "image":
+                            if "data" in block:
+                                return base64.b64decode(block["data"])
+                            elif "image" in block and "data" in block["image"]:
+                                return base64.b64decode(block["image"]["data"])
+                        # Check for text response
+                        elif block.get("type") == "text":
+                            text = block.get("text", "")
+                            if text:
+                                print(f"Model text: {text[:200]}...")
+                    # Handle object with attributes
+                    elif hasattr(block, "type"):
+                        if block.type == "image_url" and hasattr(block, "image_url"):
+                            url = block.image_url.url if hasattr(block.image_url, "url") else block.image_url.get("url", "")
+                            if url.startswith("data:image"):
+                                base64_start = url.find("base64,") + 7
+                                if base64_start > 7:
+                                    return base64.b64decode(url[base64_start:])
+
+            # Handle string content (legacy format)
+            elif isinstance(content, str):
                 # Check if it's a base64 image data URL
                 if content.startswith("data:image"):
-                    # Extract base64 part
                     base64_start = content.find("base64,") + 7
                     if base64_start > 7:
                         return base64.b64decode(content[base64_start:])
 
                 # Otherwise it's just text response
                 print(f"Model response: {content[:500]}...")
-                print("\nNote: OpenRouter model may not support direct image generation.")
-                print("Consider using Google API provider for image generation.")
+                print("\nNote: Model returned text instead of image.")
 
     return None
 
