@@ -287,11 +287,10 @@ def generate_with_openrouter(
                 print(f"Warning: Could not load {path}: {e}")
         print(f"Using {len(content)} reference image(s) for style transfer")
 
-    # Add aspect ratio and resolution hints to prompt
-    enhanced_prompt = f"{prompt}\n\n[Technical: aspect ratio {aspect_ratio}, {resolution} resolution]"
+    # Add prompt text
     content.append({
         "type": "text",
-        "text": enhanced_prompt
+        "text": prompt
     })
 
     print(f"Generating with OpenRouter API (model: {OPENROUTER_MODEL})...")
@@ -310,7 +309,11 @@ def generate_with_openrouter(
                 "X-Title": "Nano Banana Pro"
             },
             extra_body={
-                "modalities": ["text", "image"]
+                "modalities": ["text", "image"],
+                "image_config": {
+                    "aspect_ratio": aspect_ratio,
+                    "image_size": resolution
+                }
             }
         )
     except Exception as e:

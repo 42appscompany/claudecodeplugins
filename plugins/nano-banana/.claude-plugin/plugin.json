@@ -1,6 +1,6 @@
 {
   "name": "nano-banana",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "AI image generation with Gemini 3 Pro Image. Smart prompt generation, style transfer, flexible API configuration (Google AI Studio or OpenRouter).",
   "author": {
     "name": "42apps",
