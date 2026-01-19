@@ -9,6 +9,7 @@ AI image generation plugin for Claude Code using **Nano Banana Pro** (Gemini 3 P
 - **Context-Aware** - Understands your project context to create appropriate visuals
 - **Multiple Providers** - Works with Google API or OpenRouter API
 - **Multiple Formats** - Support for various aspect ratios and resolutions
+- **Flexible Configuration** - Per-project settings file or global environment variables
 
 ## Setup
 
@@ -22,51 +23,80 @@ pip install google-genai Pillow
 pip install openai Pillow
 ```
 
-### 2. Choose and Configure Provider
+### 2. Configure API (Choose One Method)
 
-#### Option A: Google API (Recommended)
+#### Method 1: Interactive Setup (Recommended)
 
-Best for full image generation features.
+Run the setup command in Claude Code:
 
-1. Go to https://aistudio.google.com
-2. Sign in with your Google account
-3. Click "Get API Key" -> "Create API Key"
-4. Add to `~/.zshrc` or `~/.bashrc`:
+```
+/nano-banana:setup
+```
 
+This will guide you through choosing a provider and entering your API key.
+
+#### Method 2: Project Settings File
+
+Create `.claude/nano-banana.local.md` in your project:
+
+```markdown
+---
+provider: openrouter
+api_key: "sk-or-v1-your-api-key-here"
+---
+
+# Nano Banana Pro Settings
+```
+
+**For Google API:**
+```markdown
+---
+provider: google
+api_key: "your-gemini-api-key-here"
+---
+```
+
+> **Note:** Add `.claude/*.local.md` to your `.gitignore` to avoid committing API keys.
+
+#### Method 3: Environment Variables
+
+Add to `~/.zshrc` or `~/.bashrc`:
+
+**For Google API (Recommended):**
 ```bash
 export GEMINI_API_KEY="your-key-here"
 export NANO_BANANA_PROVIDER="google"
 ```
 
-#### Option B: OpenRouter API
-
-Alternative unified API provider.
-
-1. Go to https://openrouter.ai
-2. Sign in and go to Keys section
-3. Create a new API key
-4. Add to `~/.zshrc` or `~/.bashrc`:
-
+**For OpenRouter API:**
 ```bash
 export OPENROUTER_API_KEY="your-key-here"
 export NANO_BANANA_PROVIDER="openrouter"
 ```
 
-### 3. Apply Configuration
+Then run: `source ~/.zshrc`
 
-```bash
-source ~/.zshrc
-```
+### Configuration Priority
+
+Settings are loaded in this order (first found wins):
+1. `.claude/nano-banana.local.md` (project-specific)
+2. Environment variables (global)
+
+### Get API Keys
+
+- **Google AI Studio:** https://aistudio.google.com → Get API Key → Create API Key (Free tier available)
+- **OpenRouter:** https://openrouter.ai → Keys → Create Key
 
 ## Usage
 
 ### Slash Commands
 
 ```
+/nano-banana:setup                                    # Configure API settings
 /generate-image "app icon for fitness tracker"
 /generate-image "website hero banner" aspect=16:9 resolution=4K
 /style-transfer reference=/path/to/style.png subject="company logo"
-/nano-banana-help
+/nano-banana:help
 ```
 
 ### Natural Language
@@ -172,6 +202,7 @@ nano-banana/
 ├── commands/
 │   ├── generate-image.md
 │   ├── style-transfer.md
+│   ├── setup.md              # NEW: Interactive setup command
 │   └── help.md
 ├── skills/
 │   └── image-generation/
@@ -181,9 +212,13 @@ nano-banana/
 │           ├── prompt-templates.md
 │           └── style-transfer.md
 ├── scripts/
-│   └── generate.py
+│   └── generate.py           # Supports .local.md settings
 ├── README.md
 └── requirements.txt
+
+# Per-project settings (not in git)
+.claude/
+└── nano-banana.local.md      # API provider and key
 ```
 
 ## License

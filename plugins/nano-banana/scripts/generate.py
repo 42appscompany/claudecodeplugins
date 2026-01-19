@@ -7,13 +7,16 @@ Supports two providers:
 - google: Direct Google AI Studio API (requires GEMINI_API_KEY)
 - openrouter: OpenRouter API (requires OPENROUTER_API_KEY)
 
-Set NANO_BANANA_PROVIDER environment variable to choose (default: google)
+Configuration priority:
+1. .claude/nano-banana.local.md (project settings)
+2. Environment variables (NANO_BANANA_PROVIDER, GEMINI_API_KEY, OPENROUTER_API_KEY)
 """
 
 import argparse
 import base64
 import io
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -25,7 +28,7 @@ DEFAULT_PROVIDER = PROVIDER_GOOGLE
 
 # Model names
 GOOGLE_MODEL = "gemini-3-pro-image-preview"
-OPENROUTER_MODEL = "google/gemini-3-pro-image-preview"  # Paid model with native image generation
+OPENROUTER_MODEL = "google/gemini-3-pro-image-preview"  # Model with native image generation
 
 VALID_ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4", "3:2", "2:3", "21:9"]
 VALID_RESOLUTIONS = ["1K", "2K", "4K"]
@@ -33,9 +36,71 @@ VALID_RESOLUTIONS = ["1K", "2K", "4K"]
 # OpenRouter API URL
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1"
 
+# Settings file path
+SETTINGS_FILE = ".claude/nano-banana.local.md"
+
+# Cached settings
+_settings_cache: dict | None = None
+
+
+def load_settings() -> dict:
+    """Load settings from .claude/nano-banana.local.md file.
+
+    Returns dict with keys: provider, api_key, google_api_key, openrouter_api_key
+    """
+    global _settings_cache
+    if _settings_cache is not None:
+        return _settings_cache
+
+    settings = {}
+    settings_path = Path(SETTINGS_FILE)
+
+    if not settings_path.exists():
+        _settings_cache = settings
+        return settings
+
+    try:
+        content = settings_path.read_text()
+
+        # Extract YAML frontmatter between --- markers
+        match = re.match(r'^---\s*\n(.*?)\n---', content, re.DOTALL)
+        if not match:
+            _settings_cache = settings
+            return settings
+
+        frontmatter = match.group(1)
+
+        # Parse simple YAML fields
+        for line in frontmatter.split('\n'):
+            line = line.strip()
+            if ':' in line and not line.startswith('#'):
+                key, value = line.split(':', 1)
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if value:
+                    settings[key] = value
+
+        print(f"Loaded settings from {SETTINGS_FILE}")
+
+    except Exception as e:
+        print(f"Warning: Could not load settings from {SETTINGS_FILE}: {e}")
+
+    _settings_cache = settings
+    return settings
+
 
 def get_provider() -> str:
-    """Get the configured provider."""
+    """Get the configured provider (from settings file or environment)."""
+    settings = load_settings()
+
+    # Priority 1: settings file
+    if "provider" in settings:
+        provider = settings["provider"].lower()
+        if provider in [PROVIDER_GOOGLE, PROVIDER_OPENROUTER]:
+            return provider
+        print(f"Warning: Invalid provider '{provider}' in settings. Using environment.")
+
+    # Priority 2: environment variable
     provider = os.environ.get("NANO_BANANA_PROVIDER", DEFAULT_PROVIDER).lower()
     if provider not in [PROVIDER_GOOGLE, PROVIDER_OPENROUTER]:
         print(f"Warning: Unknown provider '{provider}'. Using '{DEFAULT_PROVIDER}'.")
@@ -44,35 +109,55 @@ def get_provider() -> str:
 
 
 def get_google_api_key() -> str:
-    """Get Gemini API key from environment."""
+    """Get Gemini API key (from settings file or environment)."""
+    settings = load_settings()
+
+    # Priority 1: settings file (api_key or google_api_key)
+    api_key = settings.get("google_api_key") or settings.get("api_key")
+    if api_key:
+        return api_key
+
+    # Priority 2: environment variable
     api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        print("Error: GEMINI_API_KEY environment variable not set.")
-        print("\nTo get an API key:")
-        print("1. Go to https://aistudio.google.com")
-        print("2. Sign in with your Google account")
-        print("3. Click 'Get API Key' → 'Create API Key'")
-        print("4. Add to ~/.zshrc or ~/.bashrc:")
-        print('   export GEMINI_API_KEY="your-key-here"')
-        print("5. Restart terminal or run: source ~/.zshrc")
-        sys.exit(1)
-    return api_key
+    if api_key:
+        return api_key
+
+    print("Error: Google API key not configured.")
+    print("\nOption 1: Create .claude/nano-banana.local.md:")
+    print("  ---")
+    print('  provider: google')
+    print('  api_key: "your-gemini-api-key"')
+    print("  ---")
+    print("\nOption 2: Set environment variable:")
+    print('  export GEMINI_API_KEY="your-key-here"')
+    print("\nGet key at: https://aistudio.google.com")
+    sys.exit(1)
 
 
 def get_openrouter_api_key() -> str:
-    """Get OpenRouter API key from environment."""
+    """Get OpenRouter API key (from settings file or environment)."""
+    settings = load_settings()
+
+    # Priority 1: settings file (api_key or openrouter_api_key)
+    api_key = settings.get("openrouter_api_key") or settings.get("api_key")
+    if api_key:
+        return api_key
+
+    # Priority 2: environment variable
     api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
-        print("Error: OPENROUTER_API_KEY environment variable not set.")
-        print("\nTo get an API key:")
-        print("1. Go to https://openrouter.ai")
-        print("2. Sign in and go to Keys section")
-        print("3. Create a new API key")
-        print("4. Add to ~/.zshrc or ~/.bashrc:")
-        print('   export OPENROUTER_API_KEY="your-key-here"')
-        print("5. Restart terminal or run: source ~/.zshrc")
-        sys.exit(1)
-    return api_key
+    if api_key:
+        return api_key
+
+    print("Error: OpenRouter API key not configured.")
+    print("\nOption 1: Create .claude/nano-banana.local.md:")
+    print("  ---")
+    print('  provider: openrouter')
+    print('  api_key: "your-openrouter-api-key"')
+    print("  ---")
+    print("\nOption 2: Set environment variable:")
+    print('  export OPENROUTER_API_KEY="your-key-here"')
+    print("\nGet key at: https://openrouter.ai")
+    sys.exit(1)
 
 
 def load_image_as_base64(path: str) -> tuple[str, str]:
@@ -211,14 +296,6 @@ def generate_with_openrouter(
 
     print(f"Generating with OpenRouter API (model: {OPENROUTER_MODEL})...")
 
-    # Map resolution to OpenRouter image_size format
-    resolution_map = {
-        "1K": "1024x1024",
-        "2K": "2048x2048",
-        "4K": "4096x4096",
-    }
-    image_size = resolution_map.get(resolution, "2048x2048")
-
     try:
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,
@@ -233,30 +310,36 @@ def generate_with_openrouter(
                 "X-Title": "Nano Banana Pro"
             },
             extra_body={
-                "modalities": ["text", "image"],
-                "image_config": {
-                    "aspect_ratio": aspect_ratio,
-                    "image_size": image_size,
-                }
+                "modalities": ["text", "image"]
             }
         )
     except Exception as e:
         print(f"Error calling OpenRouter API: {e}")
         sys.exit(1)
 
-    # Extract response - OpenRouter returns images in content array
+    # Extract response - OpenRouter returns images in 'images' attribute
     if response.choices and response.choices[0].message:
         message = response.choices[0].message
 
-        # Check for image in response
-        if hasattr(message, "content") and message.content:
-            content = message.content
+        # Check for images attribute first (OpenRouter format)
+        if hasattr(message, "images") and message.images:
+            for img in message.images:
+                if isinstance(img, dict):
+                    img_url = img.get("image_url", {})
+                    url = img_url.get("url", "") if isinstance(img_url, dict) else ""
+                    if url.startswith("data:image"):
+                        base64_start = url.find("base64,") + 7
+                        if base64_start > 7:
+                            return base64.b64decode(url[base64_start:])
 
-            # Handle list of content blocks (multimodal response)
-            if isinstance(content, list):
-                for block in content:
+        # Fallback: check content for image data
+        if hasattr(message, "content") and message.content:
+            content_data = message.content
+
+            # Handle list of content blocks
+            if isinstance(content_data, list):
+                for block in content_data:
                     if isinstance(block, dict):
-                        # Check for image_url type
                         if block.get("type") == "image_url":
                             image_url = block.get("image_url", {})
                             url = image_url.get("url", "")
@@ -264,37 +347,19 @@ def generate_with_openrouter(
                                 base64_start = url.find("base64,") + 7
                                 if base64_start > 7:
                                     return base64.b64decode(url[base64_start:])
-                        # Check for inline_data (Gemini format)
-                        elif block.get("type") == "image":
-                            if "data" in block:
-                                return base64.b64decode(block["data"])
-                            elif "image" in block and "data" in block["image"]:
-                                return base64.b64decode(block["image"]["data"])
-                        # Check for text response
                         elif block.get("type") == "text":
                             text = block.get("text", "")
                             if text:
                                 print(f"Model text: {text[:200]}...")
-                    # Handle object with attributes
-                    elif hasattr(block, "type"):
-                        if block.type == "image_url" and hasattr(block, "image_url"):
-                            url = block.image_url.url if hasattr(block.image_url, "url") else block.image_url.get("url", "")
-                            if url.startswith("data:image"):
-                                base64_start = url.find("base64,") + 7
-                                if base64_start > 7:
-                                    return base64.b64decode(url[base64_start:])
 
-            # Handle string content (legacy format)
-            elif isinstance(content, str):
-                # Check if it's a base64 image data URL
-                if content.startswith("data:image"):
-                    base64_start = content.find("base64,") + 7
+            # Handle string content
+            elif isinstance(content_data, str):
+                if content_data.startswith("data:image"):
+                    base64_start = content_data.find("base64,") + 7
                     if base64_start > 7:
-                        return base64.b64decode(content[base64_start:])
-
-                # Otherwise it's just text response
-                print(f"Model response: {content[:500]}...")
-                print("\nNote: Model returned text instead of image.")
+                        return base64.b64decode(content_data[base64_start:])
+                else:
+                    print(f"Model response: {content_data[:300]}...")
 
     return None
 

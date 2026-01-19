@@ -20,8 +20,8 @@
     },
     {
       "name": "nano-banana",
-      "description": "AI image generation with Nano Banana Pro. Smart prompts, style transfer, context-aware creation.",
-      "version": "1.0.0",
+      "description": "AI image generation with Gemini 3 Pro. Smart prompts, style transfer, flexible API config (Google/OpenRouter).",
+      "version": "1.1.0",
       "author": {
         "name": "42apps",
         "email": "hello@42apps.ai"

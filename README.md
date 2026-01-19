@@ -21,6 +21,36 @@ Then browse and install plugins:
 | Plugin | Description | Command |
 |--------|-------------|---------|
 | [ralph-research](./plugins/ralph-research) | Deep codebase research and impact analysis | `/ralph-research` |
+| [nano-banana](./plugins/nano-banana) | AI image generation with smart prompts and style transfer | `/generate-image` |
+
+## nano-banana
+
+AI image generation plugin using Gemini 3 Pro Image via Google AI Studio or OpenRouter.
+
+**Features:**
+- Smart prompt generation - transforms simple requests into optimized prompts
+- Style transfer - generate images matching reference image style
+- Multiple providers - Google AI Studio or OpenRouter
+- Flexible configuration - per-project settings file or environment variables
+
+**Setup:**
+```bash
+/nano-banana:setup
+```
+
+Or create `.claude/nano-banana.local.md`:
+```markdown
+---
+provider: openrouter
+api_key: "your-api-key"
+---
+```
+
+**Commands:**
+- `/generate-image <description>` - Generate an image
+- `/style-transfer reference=<path> subject=<description>` - Style transfer
+- `/nano-banana:setup` - Configure API settings
+- `/nano-banana:help` - Show help
 
 ## ralph-research
 
