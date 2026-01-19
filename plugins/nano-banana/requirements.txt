@@ -1,0 +1,11 @@
+# Nano Banana Pro - Python Dependencies
+# Install with: pip install -r requirements.txt
+
+# Image processing (required for all providers)
+Pillow>=10.0.0
+
+# For Google API provider (recommended)
+google-genai>=1.0.0
+
+# For OpenRouter API provider
+openai>=1.0.0
